@@ -1,0 +1,5 @@
+This is from the book:
+Simple Real-Time Operating System: A Kernel Inside View for a Beginner
+I recommend buying it, the ebook was only $8 on Amazon.
+
+This contains fixes for PRESERVE8 and a typo in sleep()
