@@ -1,5 +1,7 @@
+            PRESERVE8 {TRUE}
+
             INCLUDE rtosAsm.h
-            
+
             IMPORT  runningThreadObjectPtr
             IMPORT  listObjectInsert
             IMPORT  listObjectDelete
@@ -210,7 +212,7 @@ semaphoreObjectPost
             ADD     R0, R0, #semaphoreObject_t_waitList_offset  
                                 ;R0=&semaphoreObjectPtr->waitList.
             
-            STMFD   SP!, {R14}  ;save return address of this function before
+            STMFD   SP!, {R12,R14}  ;save return address of this function before
                                 ;making function call.
             
             ;waitingThreadObjectPtr = 
@@ -219,7 +221,7 @@ semaphoreObjectPost
                                 ;After this function call R0 holds 
                                 ;waitingThreadObjectPtr.
             
-            STMFD   SP!, {R0}       ;save waitingThreadObjectPtr to make 
+            STMFD   SP!, {R0,R12}       ;save waitingThreadObjectPtr to make 
                                     ;function call.
             
             MOV     R1, R0          ;R1=waitingThreadObjectPtr
@@ -240,8 +242,8 @@ semaphoreObjectPost
             ;(when waitTime greater than 0, this threadObject will be in 
             ;timerList).
             
-            LDMFD   SP!, {R0, R14}  ;R0 = waitingThreadObjectPtr, 
-                                    ;R14=return address of this function.
+            LDMFD   SP!, {R0, R12}  ;R0 = waitingThreadObjectPtr,
+            LDMFD   SP!, {R12, R14}  ;R14=return address of this function.
             
             LDR     R1, =runningThreadObjectPtr ;R1=&runningThreadObjectPtr
             
@@ -308,6 +310,4 @@ called_from_interrrupt_service_routine
         
 
             END
-        
-        
-        
+
