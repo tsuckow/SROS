@@ -556,4 +556,7 @@ void semaphoreObjectInit(semaphoreObject_t *semaphoreObjectPtr,
     listObjectInit(&(semaphoreObjectPtr->waitList));
 }
 
-
+void internal_yield(threadObject_t * runningThread)
+{
+   listObjectInsert(&readyList, runningThread)
+}

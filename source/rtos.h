@@ -134,6 +134,7 @@ void block(void);
 void timerTick(void);
 void sleep(int32 noOfTicks);
 void timerTick(void);
+void yield(void);
 
 
 #endif

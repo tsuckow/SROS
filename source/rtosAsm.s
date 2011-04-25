@@ -234,6 +234,58 @@ sleep
             B       scheduler
             
 
+            AREA    yield_code, CODE
+            
+yield
+            INTERRUPTS_SAVE_DISABLE oldCPSR, R2, R3
+                                            ;disable interrupts.
+
+            ;keep the context of the running thread into the 
+            ;running threadObject.
+            
+            MOV     R1, R0                  ;R1=waitTime. waitTime should be 
+                                            ;always in R1 register 
+                                            ;(similar to mutex, semaphore, 
+                                            ;mailbox function calls).
+            
+            LDR     R0, =runningThreadObjectPtr     
+                                            ;R0=&runningThreadObjectPtr
+            
+            LDR     R0, [R0]
+            
+            ASSERT  threadObject_t_R_offset = 0
+            
+            STMIA   R0, {R0-R14}            ;saved all registers R0-R14 in the
+                                            ;ready thread.
+            
+            STR     R14, [R0, #(15*4)]      ;save the return address as the 
+                                            ;starting point of the PC when the
+                                            ;thread starts.
+            
+            LDR     R4, =oldCPSR
+            
+            LDR     R4, [R4]                ;get current status of the thread.
+            
+            SET_STATE_OF_PC_IN_CPSR R14, R4 ;This macro keep the state of 
+                                            ;PC in R4
+            
+            STR     R4, [R0, #threadObject_t_cpsr_offset]
+                                            ;save the current status of the 
+                                            ;thread.
+            
+            ;insert the running thread into timerList.
+            
+            MOV     R1, #0                  ;wait list is null. 
+                                            ;Running thread will only wait in 
+                                            ;timer list.
+            
+            BL      internal_yield
+            ;internal_yield(&runningThread);
+            
+            ;jump to scheduler
+            
+            B       scheduler
+            
 
 
 
