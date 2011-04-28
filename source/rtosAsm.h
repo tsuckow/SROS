@@ -11,7 +11,8 @@ SVC_MODE                EQU     2_10011
 ABT_MODE                EQU     2_10111
 UND_MODE                EQU     2_11011
 
-
+;How many timer ticks is a thread quantum when first created
+timeQuantumDuration EQU 20
 
 
 
@@ -123,7 +124,8 @@ threadObject_t_priority_offset          EQU     68
 threadObject_t_waitListResource_offset  EQU     72
 threadObject_t_waitListTimer_offset     EQU     76
 threadObject_t_threadObjectName_offset  EQU     80
-threadObject_t_size                     EQU     84
+threadObject_t_timeQuantum_offset       EQU     84
+threadObject_t_size                     EQU     88
         
 mailboxObject_t_mailboxBuffer_offset    EQU     0
 mailboxObject_t_readIndex_offset        EQU     4

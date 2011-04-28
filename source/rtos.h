@@ -33,13 +33,14 @@ typedef struct _threadObject_
     uint32 cpsr;
 
     uint32 priority;
-    
+
     struct _listObject_ *waitListResource;
-    
+
     struct _listObject_ *waitListTimer;
-    
+
     char   *threadObjectName;
 
+    uint32 timeQuantum;
 }threadObject_t;
 
 

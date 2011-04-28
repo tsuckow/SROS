@@ -1,6 +1,7 @@
 #include "rtos.h"
 #include "assert.h"
 
+#define TIME_QUANTUM 10
 #define MAX_THREADS_IN_THE_SYSTEM   100
 #define MAX_LIST_NODES              2*MAX_THREADS_IN_THE_SYSTEM
 listNode_t listNodes[MAX_LIST_NODES];
@@ -13,6 +14,7 @@ int64        time;
 threadObject_t *runningThreadObjectPtr;
 threadObject_t idleThread;
 int32          idleStack[5];
+int32 quantumExpired;
 
 extern void rtosInitAsm(void);
 extern void interrupt_disable(void);
@@ -128,6 +130,58 @@ void listObjectInsert(listObject_t *listNodePtr,
     //insert into the list.
     newListNodePtr->nextListNode = listNodePtr->nextListNode;
     listNodePtr->nextListNode = newListNodePtr;
+}
+
+void listObjectInsertFront(listObject_t *listNodePtr, 
+                    threadObject_t *newThreadObject)
+{
+    listNode_t *newListNodePtr;
+    uint32 newThreadObjectPriority;
+    
+    assert(newThreadObject != 0);
+    assert(newThreadObject->waitListResource == 0);
+    assert(listNodePtr != 0);
+    
+    //note the list pointer into the threadObject.
+    newThreadObject->waitListResource = listNodePtr;
+    
+    newThreadObjectPriority = newThreadObject->priority;
+    //listObject first element is dummy head. Its auxInfo hold 
+    //the number of list nodes available in the list.
+    //So the count is increased when inserting an element.
+    listNodePtr->auxInfo++;
+
+    //parse the list till we reach the correct place for the newThreadObject.
+    while(listNodePtr->nextListNode != 0 && 
+        listNodePtr->nextListNode->auxInfo < newThreadObjectPriority)
+    {
+        listNodePtr = listNodePtr->nextListNode;
+    }
+
+    //allocate and initialize the new node.
+    newListNodePtr = listNodeAlloc();
+    newListNodePtr->element = newThreadObject;
+    newListNodePtr->auxInfo = newThreadObjectPriority;
+
+    //insert into the list.
+    newListNodePtr->nextListNode = listNodePtr->nextListNode;
+    listNodePtr->nextListNode = newListNodePtr;
+}
+
+/*
+Inserts into list at front or back depending on whether the time quantum has expired
+*/
+void listObjectInsertAuto(listObject_t *listNodePtr, threadObject_t *newThreadObject)
+{
+   if( quantumExpired )
+   {
+      listObjectInsert(listNodePtr,newThreadObject);
+      quantumExpired = 0;
+   }
+   else
+   {
+      listObjectInsertFront(listNodePtr,newThreadObject);
+   }
 }
 
 /*
@@ -298,7 +352,7 @@ int is_thread_switch_needed(void)
     
     if(readyList.auxInfo > 0)   //if the number of threads in the ready list > 0
     {
-        if((readyList.nextListNode)->auxInfo < runningThreadObjectPtr->priority)
+        if(quantumExpired || (readyList.nextListNode)->auxInfo < runningThreadObjectPtr->priority)
         {
             returnValue = 1;
         }
@@ -428,7 +482,7 @@ removed from any waitList if it is in).
 void timerTick(void)
 {
     listObject_t *freedListNodePtr;
-    
+
     time++;
     //decrease the waiting time by 1.
     if(timerList.auxInfo > 0)
@@ -470,9 +524,15 @@ void timerTick(void)
             }
         }   
     }
-    
+
+    if( --(runningThreadObjectPtr->timeQuantum) == 0 )
+    {
+        runningThreadObjectPtr->timeQuantum = TIME_QUANTUM;
+        quantumExpired = 1;
+    }
+
     return;
-}       
+}
 
 /*
 Description:
@@ -552,11 +612,11 @@ void semaphoreObjectInit(semaphoreObject_t *semaphoreObjectPtr,
                         uint32 initialCount)
 {
     semaphoreObjectPtr->count = initialCount;
-
+									
     listObjectInit(&(semaphoreObjectPtr->waitList));
 }
 
 void internal_yield(threadObject_t * runningThread)
 {
-   listObjectInsert(&readyList, runningThread)
+    listObjectInsert(&readyList, runningThread);
 }

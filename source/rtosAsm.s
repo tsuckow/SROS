@@ -5,10 +5,12 @@
             IMPORT  runningThreadObjectPtr
             IMPORT  listObjectInsert
             IMPORT  listObjectDelete
+            IMPORT  listObjectInsertAuto
             IMPORT  readyList
             IMPORT  irq_interrupt_service_routine
             IMPORT  is_thread_switch_needed
             IMPORT  __main
+            IMPORT  internal_yield
 
             IMPORT  insertIntoTimerList
             IMPORT  deleteFromTimerList
@@ -17,6 +19,7 @@
             EXPORT  rtosInitAsm
             EXPORT  block
             EXPORT  sleep
+            EXPORT  yield
             EXPORT  irq_interrupt_handler
             EXPORT  interrupt_disable
             EXPORT  interrupt_restore
@@ -459,7 +462,7 @@ irq_interrupt_handler
         LDR     R0, =readyList          
                                 ;R0=&readyList.
         
-        BL      listObjectInsert        
+        BL      listObjectInsertAuto
                                 ;insert the interrupted threadObject into the 
                                 ;readyList.
         
@@ -620,10 +623,16 @@ threadObjectName_offset EQU 20
                                         ;R1=threadObjectName
             
             STR     R1, [$threadObjectPtrR0, \
-                            #threadObject_t_threadObjectName_offset]    
+                            #threadObject_t_threadObjectName_offset]
                                         ;save name pointer.
             
+            MOV     R1, #timeQuantumDuration
+            
+            STR     R1, [$threadObjectPtrR0, \
+                            #threadObject_t_timeQuantum_offset]
+           
             MOV     R1, #0      ;R1=0
+            
             
             STR     R1, [$threadObjectPtrR0, #threadObject_t_waitListTimer_offset]  
             ;waitListTimer=0 as the current thread object is not in timer list.
