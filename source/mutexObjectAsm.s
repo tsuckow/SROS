@@ -1,3 +1,5 @@
+            PRESERVE8 {TRUE}
+
             INCLUDE rtosAsm.h
             
             IMPORT  runningThreadObjectPtr
@@ -315,4 +317,4 @@ called_from_interrupt_service_routine
 
         
             END
-            
+
