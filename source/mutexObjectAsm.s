@@ -22,31 +22,47 @@
             
 ;The mutexObjectLock function lock the mutex. The pseduo code for 
 ;mutexObjectLock() is shown below.
+;
+;@brief Acquires a mutex lock
+;
+;Blocks till the mutex is acquired for a maximum of waitTime.
+;If waitTime is 0 then the function returns immediately.
+;If waitTime is negative then the function blocks indefinitely.
+;
+;@param mutexObjectPtr Pointer to mutex to lock
+;@param waitTime Time till mutex acquisition fails
+;
+;@return 1 on successful acquisition of mutex, 0 on failure
+;
 ;int32 mutexObjectLock(mutexObject_t *mutexObjectPtr, int32 waitTime)
 ;{
 ;   if(swap(0, &mutexObjectPtr->mutex))
 ;   {
+;       //Aquired Mutex, no one else can be on wait list cause we would have handed
+;       //the mutex to them if there was.
 ;       return 1;
 ;   }
-;   else        
+;   else
 ;   {
 ;       if(waitTime)
 ;       {
 ;           interruptsDisable();
-;           get the context which should be functionally equivalent to starting
-;           of this function and store that context in the running 
-;           threadObject i.e. context space of running thread.
+;           Get the context which should be functionally equivalent to starting
+;              of this function and store that context in the running
+;              threadObject i.e. context space of running thread.
 ;           listObjectInsert(&mutexObjectPtr->waitList,
-;           runningThreadObjectPtr);
+;              runningThreadObjectPtr);
 ;           if(waitTime > 0)
 ;           {
-;               insertIntoTimerList(&runningThreadObject, 
-;                               mutexObjectPtr->waitList); 
+;               //When the timer Expires, the mutex will fail (return 0)
+;               insertIntoTimerList(&runningThreadObject,
+;                               mutexObjectPtr->waitList);
 ;           }
 ;           jump to scheduler();
 ;       }
 ;       else
 ;       {
+;           //Failed to aquire mutex
 ;           return 0;
 ;       }
 ;   }
@@ -98,10 +114,14 @@ mutexObjectLock
             STMIA   R3, {R0-R14}            ;save all registers R0-R14 in 
                                             ;the running threadObject
             
-            ADR     R4, mutexObjectLock     ;get the address of this function. 
-                                            ;(to start this thread later).
-                                            ;R4=mutexObjectLock
-            
+;           ADR     R4, mutexObjectLock     ;get the address of this function.
+;                                           ;(to start this thread later).
+;                                           ;R4=mutexObjectLock
+
+            ADR     R4, mutexObjectLock_failure ;get the address of failure.
+                                                ;(to start this thread later).
+                                                ;R4=mutexObjectLock_failure
+
             STR     R4, [R3, #(15*4)]       ;save it as the PC to start later.
             
             LDR     R4, =oldCPSR
@@ -148,8 +168,14 @@ mutexObjectLock
             ;jump to scheduler
             
             B       scheduler
-            
-            
+
+mutexObjectLock_success             ;Restore successful thread here.
+            MOV     R0, #1          ;returnValue = 1.
+            BX      LR              ;return returnValue.
+mutexObjectLock_failure             ;Restore timed-out thread here.
+            MOV     R0, #0          ;returnValue = 0.
+            BX      LR              ;return returnValue.
+
 ;The below code implement mutexObjectRelease() function. mutexObjectRelease()
 ;function release the mutex and do context switch if necessary. The high level
 ;pseudo code for mutexObjectRelease() is shown below.
@@ -157,10 +183,10 @@ mutexObjectLock
 ;{
 ;   threadObject_t *waitingThreadObjectPtr;
 ;   interruptsDisable();
-;   mutexObjectPtr->mutex = 1;
 ;   if(listObjectCount(&mutexObjectPtr->waitList))
 ;   {
 ;       waitingThreadObjectPtr=listObjectDelete(&mutexObjectPtr->waitList);
+;       Update return address to mutexObjectLock_success
 ;       listObjectInsert(&readyList,waitingThreadObjectPtr);
 ;       if(waitingThreadObjectPtr->waitTime >= 0)
 ;       {
@@ -169,12 +195,17 @@ mutexObjectLock
 ;       if(waitingThreadObjectPtr->priority < runningThreadObject.priority &&
 ;               this function not called from interrupt service routine)
 ;       {
-;           get the context functionally equivalent to the end 
-;           this function and save that context into running
-;           threadObject.
+;           Get the context functionally equivalent to the end
+;              this function and save that context into running
+;              threadObject.
 ;           listObjectInsert(&readyList,&runningThreadObject);
 ;           jump to scheduler();
 ;       }
+;   }
+;   else
+;   {
+;       //Unlock Mutex
+;       mutexObjectPtr->mutex = 1;
 ;   }
 ;   interruptRestore();
 ;   return;
@@ -187,12 +218,6 @@ mutexObjectRelease
             ;interruptsDisable
             
             INTERRUPTS_SAVE_DISABLE oldCPSR, R1, R2
-            
-            MOV     R1, #1  ;R1=1
-            
-            ASSERT mutexObject_t_mutex_offset = 0
-            
-            SWP     R1, R1, [R0]    ;mutexObject->mutex = 1;
             
             LDR     R1, [R0, #(mutexObject_t_waitList_offset+ \
                                     listObject_t_auxInfo_offset)] 
@@ -210,9 +235,19 @@ mutexObjectRelease
             STMFD   SP!, {R14}  ;saving R14 to make function call.
             
             ;listObjectDelete(&mutexObjectPtr->waitList)
-            BL      listObjectDelete    
+            ;NOTE: This call is made while the stack is not 8 byte
+            ;aligned.  Currently it doesn't matter because
+            ;listObjectDelete doesn't need an 8 byte aligned stack
+            ;and it doesn't call anything.
+            BL      listObjectDelete
                                 ;After returning from the function, 
                                 ;R0 contain waitingThreadObjectPtr
+            ADR     R1, mutexObjectLock_success ;get the address of success in
+                                                ;the lock function.
+                                                ;(to start this thread later).
+                                                ;R1=mutexObjectLock_success
+
+            STR     R1, [R0, #(15*4)]       ;save it as the PC to start later.
             
             MOV     R1, R0      ;R1=waitingThreadObjectPtr
             
@@ -307,6 +342,12 @@ mutexObjectRelease
             
             
 no_thread_waiting_for_mutex
+            MOV     R1, #1  ;R1=1
+
+            ASSERT mutexObject_t_mutex_offset = 0
+
+            SWP     R1, R1, [R0]    ;mutexObject->mutex = 1 (unlocked);
+
 waiting_thread_does_not_have_high_priority
 called_from_interrupt_service_routine
             
