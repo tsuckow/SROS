@@ -14,7 +14,8 @@
             
             EXPORT  mutexObjectLock
             EXPORT  mutexObjectRelease
-            
+
+            IMPORT  mutexObjectLockImpl
 ;The below code section implement the mutexObjectLock() and 
 ;mutexObjectRelease() functions.
 
@@ -68,12 +69,60 @@
 ;   }
 ;}
 ;Note : This function should not be called from interrupt service 
-;routinie with nonzero waitTime.
+;routine with nonzero waitTime.
 
             ;R0 = mutexObjectPtr, R1 = waitTime according to the calling 
             ;convention.
 mutexObjectLock
-            
+            ;interruptDisable()
+            INTERRUPTS_SAVE_DISABLE oldCPSR, R2, R3
+
+            MOV     R2, #0          ;R2=0;
+            ASSERT  mutexObject_t_mutex_offset = 0
+            SWP     R2, R2, [R0]    ;R2 = mutex
+
+            ;Get running thread object ptr
+            LDR     R3, =runningThreadObjectPtr
+            LDR     R3, [R3]
+
+            ASSERT  threadObject_t_R_offset = 0
+
+            STMIA   R3, {R0-R14}            ;save all registers R0-R14 in 
+                                            ;the running threadObject
+
+            ADR     R4, mutexObjectLockCallback ;get the address to come back to.
+            STR     R4, [R3, #(15*4)]           ;save it as the PC to start later.
+
+            ;Call our C func.
+            BL      mutexObjectLockImpl
+
+            LDR     R3, =runningThreadObjectPtr
+            LDR     R3, [R3]
+            LDR     LR, [R3, #(14*4)] ;Get back the return address
+
+mutexObjectLockCallback
+            BX      LR
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             MOV     R2, #0          ;R2=0;
             
             ASSERT  mutexObject_t_mutex_offset = 0
