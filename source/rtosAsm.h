@@ -115,8 +115,8 @@ listObject_t_size               EQU 12
         
         
 mutexObject_t_mutex_offset      EQU     0
-mutexObject_t_waitList_offset   EQU     4
-mutexObject_t_size              EQU     (4+listObject_t_size)
+;mutexObject_t_waitList_offset   EQU     4
+;mutexObject_t_size              EQU     (4+listObject_t_size)
         
 threadObject_t_R_offset                 EQU     0
 threadObject_t_cpsr_offset              EQU     64
@@ -125,8 +125,11 @@ threadObject_t_waitListResource_offset  EQU     72
 threadObject_t_waitListTimer_offset     EQU     76
 threadObject_t_threadObjectName_offset  EQU     80
 threadObject_t_timeQuantum_offset       EQU     84
-threadObject_t_size                     EQU     88
-        
+threadObject_t_innatePriority_offset     EQU     88
+threadObject_t_promotee_offset          EQU     92
+threadObject_t_promoterList_offset      EQU     96
+threadObject_t_size                     EQU     96+listObject_t_size
+
 mailboxObject_t_mailboxBuffer_offset    EQU     0
 mailboxObject_t_readIndex_offset        EQU     4
 mailboxObject_t_writeIndex_offset       EQU     8

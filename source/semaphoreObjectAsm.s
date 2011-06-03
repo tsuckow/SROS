@@ -3,8 +3,8 @@
             INCLUDE rtosAsm.h
 
             IMPORT  runningThreadObjectPtr
-            IMPORT  listObjectInsert
-            IMPORT  listObjectDelete
+            IMPORT  waitlistObjectInsert
+            IMPORT  waitlistObjectDelete
             IMPORT  readyList
             IMPORT  oldCPSR
             IMPORT  scheduler
@@ -117,7 +117,7 @@ semaphoreObjectPend
             
             MOV         R1, R3      ;R1=&runningThreadObjectPtr
             
-            BL          listObjectInsert    
+            BL          waitlistObjectInsert    
                                     ;listObjectInsert()
             
             LDR         R0, =runningThreadObjectPtr         
@@ -217,7 +217,7 @@ semaphoreObjectPost
             
             ;waitingThreadObjectPtr = 
             ;               listObjectDelete(semaphoreObjectPtr->waitList);
-            BL      listObjectDelete 
+            BL      waitlistObjectDelete 
                                 ;After this function call R0 holds 
                                 ;waitingThreadObjectPtr.
             
@@ -229,7 +229,7 @@ semaphoreObjectPost
             LDR     R0, =readyList  ;R0=&readyList
             
             ;listObjectInsert(readyList, waitingThreadObjectPtr);
-            BL      listObjectInsert
+            BL      waitlistObjectInsert
             
             LDR     R0, [SP]        ;We get R0=waitingThreadObjectPtr
             
@@ -294,7 +294,7 @@ semaphoreObjectPost
             LDR     R0, =readyList          ;R0=&readyList.
             
             ;listObjectInsert(&readyList, &runningThread);
-            BL      listObjectInsert
+            BL      waitlistObjectInsert
             
             B       scheduler
             

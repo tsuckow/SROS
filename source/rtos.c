@@ -3,7 +3,8 @@
 
 #define TIME_QUANTUM 10
 #define MAX_THREADS_IN_THE_SYSTEM   100
-#define MAX_LIST_NODES              2*MAX_THREADS_IN_THE_SYSTEM
+/*1 Waitlist, 1 Timer List, 1 Promotion List*/
+#define MAX_LIST_NODES              3*MAX_THREADS_IN_THE_SYSTEM
 listNode_t listNodes[MAX_LIST_NODES];
 uint32     listNodesAvailableCount;
 listNode_t *listNodesAvailable[MAX_LIST_NODES];
@@ -86,29 +87,15 @@ void listObjectInit(listObject_t *listObjectPtr)
     listObjectPtr->nextListNode = 0;
 }
 
-/*
-Description:
-This function insert a new listNode into the linked list. The linked
-list hold the threadObjects as it's elements. It take "newThreadObject"
-and insert it at appropriate place in the list according to the priority.
-All the threadObjects in the list are stored in the descending order of
-priority. (Note lower the priority number, higher the priority).
-In each list node, the "priority" field of threadObject is noted into
-the auxInfo field of the listNode.
-*/
 void listObjectInsert(listObject_t *listNodePtr, 
                     threadObject_t *newThreadObject)
 {
     listNode_t *newListNodePtr;
     uint32 newThreadObjectPriority;
-    
+
     assert(newThreadObject != 0);
-    assert(newThreadObject->waitListResource == 0);
     assert(listNodePtr != 0);
-    
-    //note the list pointer into the threadObject.
-    newThreadObject->waitListResource = listNodePtr;
-    
+
     newThreadObjectPriority = newThreadObject->priority;
     //listObject first element is dummy head. Its auxInfo hold 
     //the number of list nodes available in the list.
@@ -132,7 +119,29 @@ void listObjectInsert(listObject_t *listNodePtr,
     listNodePtr->nextListNode = newListNodePtr;
 }
 
-void listObjectInsertFront(listObject_t *listNodePtr, 
+/*
+Description:
+This function insert a new listNode into the linked list. The linked
+list hold the threadObjects as it's elements. It take "newThreadObject"
+and insert it at appropriate place in the list according to the priority.
+All the threadObjects in the list are stored in the descending order of
+priority. (Note lower the priority number, higher the priority).
+In each list node, the "priority" field of threadObject is noted into
+the auxInfo field of the listNode.
+*/
+void waitlistObjectInsert(listObject_t *listNodePtr, 
+                    threadObject_t *newThreadObject)
+{
+    assert(newThreadObject != 0);
+    assert(newThreadObject->waitListResource == 0);
+
+    //note the list pointer into the threadObject.
+    newThreadObject->waitListResource = listNodePtr;
+
+   listObjectInsert( listNodePtr, newThreadObject );
+}
+
+void waitlistObjectInsertFront(listObject_t *listNodePtr, 
                     threadObject_t *newThreadObject)
 {
     listNode_t *newListNodePtr;
@@ -171,17 +180,44 @@ void listObjectInsertFront(listObject_t *listNodePtr,
 /*
 Inserts into list at front or back depending on whether the time quantum has expired
 */
-void listObjectInsertAuto(listObject_t *listNodePtr, threadObject_t *newThreadObject)
+void waitlistObjectInsertAuto(listObject_t *listNodePtr, threadObject_t *newThreadObject)
 {
    if( quantumExpired )
    {
-      listObjectInsert(listNodePtr,newThreadObject);
+      waitlistObjectInsert(listNodePtr,newThreadObject);
       quantumExpired = 0;
    }
    else
    {
-      listObjectInsertFront(listNodePtr,newThreadObject);
+      waitlistObjectInsertFront(listNodePtr,newThreadObject);
    }
+}
+
+threadObject_t *listObjectPeek(listObject_t *listObjectPtr)
+{
+    assert(listObjectPtr != 0);
+    assert(listObjectPtr->nextListNode != 0);
+    assert(listObjectPtr->auxInfo > 0);
+
+    return listObjectPtr->nextListNode->element;
+}
+
+threadObject_t *listObjectPeekWaitlist(listObject_t *listObjectPtr, listObject_t *waitlist )
+{
+   listNode_t * node;
+
+   assert(listObjectPtr != 0);
+   assert(listObjectPtr->nextListNode != 0);
+   assert(listObjectPtr->auxInfo > 0);
+   assert(waitlist != 0);
+
+   node = listObjectPtr->nextListNode;
+
+   while( node != 0 && node->element->waitListResource != waitlist )
+   {
+      node = node->nextListNode;
+   }
+   return (node==0)?0:node->element;
 }
 
 /*
@@ -189,7 +225,7 @@ Description:
 This function delete the first listNode from the linked list
 and return the threadObject (i.e. "element") in the listNode.
 */
-threadObject_t *listObjectDelete(listObject_t *listObjectPtr)
+threadObject_t *waitlistObjectDelete(listObject_t *listObjectPtr)
 {
     threadObject_t *element;
     
@@ -224,11 +260,6 @@ threadObject_t *listObjectDelete(listObject_t *listObjectPtr)
     return element;
 }
 
-/*
-Description:
-This function delete the node that is holding the threadObject given as input.
-The node that is holding the threadObject can be anywhere in the listObject.
-*/
 void listObjectDeleteMiddle(listObject_t *waitList, 
                             threadObject_t *threadObjectToBeDeleted)
 {
@@ -236,7 +267,6 @@ void listObjectDeleteMiddle(listObject_t *waitList,
     int i;
     
     assert(threadObjectToBeDeleted != 0);
-    assert(threadObjectToBeDeleted->waitListResource == waitList);
     assert(waitList->auxInfo > 0);
     
     listNodePtr = waitList;
@@ -252,10 +282,6 @@ void listObjectDeleteMiddle(listObject_t *waitList,
             
             waitList->auxInfo--;
             
-            //make the waitListResource pointer in the thread object equal
-            //to null.
-            threadObjectToBeDeleted->waitListResource = 0;
-
             break;
         }
         else
@@ -263,9 +289,24 @@ void listObjectDeleteMiddle(listObject_t *waitList,
             listNodePtr = listNodePtr->nextListNode;
         }
     }
-    
-    
-    return;
+
+   return;
+}
+/*
+Description:
+This function delete the node that is holding the threadObject given as input.
+The node that is holding the threadObject can be anywhere in the listObject.
+*/
+void waitlistObjectDeleteMiddle(listObject_t *waitList, 
+                            threadObject_t *threadObjectToBeDeleted)
+{
+   assert(threadObjectToBeDeleted != 0);
+   assert(threadObjectToBeDeleted->waitListResource == waitList);
+
+   listObjectDeleteMiddle( waitList, threadObjectToBeDeleted );
+
+   threadObjectToBeDeleted->waitListResource = 0;
+   return;
 }
 
 /*
@@ -501,7 +542,7 @@ void timerTick(void)
                 //(mutex/semaphore/mailBox).
                 if(freedListNodePtr->auxInfo != 0)
                 {
-                    listObjectDeleteMiddle((listObject_t *)(freedListNodePtr->auxInfo),
+                    waitlistObjectDeleteMiddle((listObject_t *)(freedListNodePtr->auxInfo),
                                             freedListNodePtr->element);
                 }
                 
@@ -511,7 +552,7 @@ void timerTick(void)
                 freedListNodePtr->element->waitListTimer = 0;
                 
                 //insert the threadObject into readyList.
-                listObjectInsert(&readyList, freedListNodePtr->element);
+                waitlistObjectInsert(&readyList, freedListNodePtr->element);
                 
                 //free the listNode.
                 listNodeFree(freedListNodePtr);
@@ -552,7 +593,7 @@ void threadObjectDestroy(threadObject_t *threadObjectPtr)
     {
         assert(threadObjectPtr->waitListResource->auxInfo > 0);
         
-        listObjectDeleteMiddle(threadObjectPtr->waitListResource, \
+        waitlistObjectDeleteMiddle(threadObjectPtr->waitListResource, \
                                 threadObjectPtr);
     }
     
@@ -604,6 +645,14 @@ void mutexObjectInit(mutexObject_t *mutexObjectPtr, int32 initialFlag)
     listObjectInit(&mutexObjectPtr->waitList);
 }
 
+void mutexObjectInitEx(mutexObject_t *mutexObjectPtr, int32 initialFlag, int32 mode)
+{
+   mutexObjectInit( mutexObjectPtr, initialFlag );
+   assert( mode == 0 || mode == 1 );
+
+   mutexObjectPtr->mode = mode;
+}
+
 /*
 This funciton initializes the semaphoreObject. The initial count of the
 semaphore is initialized with the "initialCount" passed to this function.
@@ -618,5 +667,5 @@ void semaphoreObjectInit(semaphoreObject_t *semaphoreObjectPtr,
 
 void internal_yield(threadObject_t * runningThread)
 {
-    listObjectInsert(&readyList, runningThread);
+    waitlistObjectInsert(&readyList, runningThread);
 }

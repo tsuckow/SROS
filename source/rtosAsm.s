@@ -3,9 +3,10 @@
             INCLUDE rtosAsm.h
 
             IMPORT  runningThreadObjectPtr
-            IMPORT  listObjectInsert
-            IMPORT  listObjectDelete
-            IMPORT  listObjectInsertAuto
+            IMPORT  listObjectInit
+            IMPORT  waitlistObjectInsert
+            IMPORT  waitlistObjectDelete
+            IMPORT  waitlistObjectInsertAuto
             IMPORT  readyList
             IMPORT  irq_interrupt_service_routine
             IMPORT  is_thread_switch_needed
@@ -164,7 +165,7 @@ block
             
             LDR     R0, =readyList
 
-            BL      listObjectInsert 
+            BL      waitlistObjectInsert 
                                         ;insert the running threadObject 
                                         ;into the readyList.
                                     
@@ -462,7 +463,7 @@ irq_interrupt_handler
         LDR     R0, =readyList          
                                 ;R0=&readyList.
         
-        BL      listObjectInsertAuto
+        BL      waitlistObjectInsertAuto
                                 ;insert the interrupted threadObject into the 
                                 ;readyList.
         
@@ -476,7 +477,7 @@ start_high_priority_thread
 
         LDR     R0, =readyList
         
-        BL      listObjectDelete
+        BL      waitlistObjectDelete
                                 ;get the high priority thread to be run. 
                                 ;After this function R0 holds the 
                                 ;&threadObject
@@ -612,34 +613,45 @@ threadObjectName_offset EQU 20
             
             STR     R12, [$threadObjectPtrR0, #threadObject_t_priority_offset]  
                                         ;threadObjectPtr->priority=priority.
-            
+            STR     R12, [$threadObjectPtrR0, #threadObject_t_innatePriority_offset]
+
             LDR     R1, [SP, #cpsr_offset]  
                                         ;R1=cpsr
-            
+
             STR     R1, [$threadObjectPtrR0, #threadObject_t_cpsr_offset]   
                                         ;save CPSR
-            
+
             LDR     R1, [SP, #threadObjectName_offset]  
                                         ;R1=threadObjectName
-            
+
             STR     R1, [$threadObjectPtrR0, \
                             #threadObject_t_threadObjectName_offset]
                                         ;save name pointer.
-            
+
             MOV     R1, #timeQuantumDuration
-            
+
             STR     R1, [$threadObjectPtrR0, \
                             #threadObject_t_timeQuantum_offset]
-           
+
             MOV     R1, #0      ;R1=0
-            
-            
+
+            STR     R1, [$threadObjectPtrR0, #threadObject_t_promotee_offset]  
+
             STR     R1, [$threadObjectPtrR0, #threadObject_t_waitListTimer_offset]  
             ;waitListTimer=0 as the current thread object is not in timer list.
-            
+
             STR     R1, [$threadObjectPtrR0, #threadObject_t_waitListResource_offset]   
             ;waitListResource should be 0 before inserting into any list.
-                        
+
+
+            STMFD   SP!, {R0,LR}
+
+            LDR     R1, =threadObject_t_promoterList_offset
+            ADD     R0, $threadObjectPtrR0, R1  ;R0 = &(threadObjectPtr->promotionList)
+            BL      listObjectInit
+
+            LDMFD   SP!, {R0,LR}
+
             INTERRUPTS_SAVE_DISABLE oldCPSR, R1, R2
             
             MOV     R1, R0              ;R1=threadObjectPtr
@@ -649,7 +661,7 @@ threadObjectName_offset EQU 20
             STMFD   SP!, {R12,LR}
             
             ;listObjectInsert(&readyList, threadObject);
-            BL      listObjectInsert
+            BL      waitlistObjectInsert
 
             ;check if scheduler is started. If scheduler is not started
             ;then runningThreadObjectPtr = 0.

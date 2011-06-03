@@ -41,6 +41,12 @@ typedef struct _threadObject_
     char   *threadObjectName;
 
     uint32 timeQuantum;
+
+    uint32 innatePriority;
+
+    struct _threadObject_ * promotee;
+
+    listObject_t promoterList;
 }threadObject_t;
 
 
@@ -49,6 +55,10 @@ typedef struct
     int32 mutex;
 
     listObject_t waitList;
+
+    threadObject_t * owner;
+
+    uint32 mode;
 
 }mutexObject_t;
 
@@ -84,9 +94,15 @@ void listObjectInit(listObject_t *listObjectPtr);
 
 void listObjectInsert(listObject_t *listNodePtr, threadObject_t *newThreadObject);
 
-threadObject_t *listObjectDelete(listObject_t *listObjectPtr);
+void waitlistObjectInsert(listObject_t *listNodePtr, threadObject_t *newThreadObject);
+
+threadObject_t *listObjectPeek(listObject_t *listObjectPtr);
+threadObject_t *listObjectPeekWaitlist(listObject_t *listObjectPtr, listObject_t *waitlist );
+
+threadObject_t *waitlistObjectDelete(listObject_t *listObjectPtr);
 
 void listObjectDeleteMiddle(listObject_t *waitList, threadObject_t *threadObjectToBeDeleted);
+void waitlistObjectDeleteMiddle(listObject_t *waitList, threadObject_t *threadObjectToBeDeleted);
 
 int32 listObjectCount(listObject_t *listObjectPtr);
 
@@ -104,6 +120,8 @@ void threadObjectCreate(threadObject_t *threadObjectPtr,
 void threadObjectDestroy(threadObject_t *threadObjectPtr);
 
 void mutexObjectInit(mutexObject_t *mutexObjectPtr, int32 initialFlag);
+
+void mutexObjectInitEx(mutexObject_t *mutexObjectPtr, int32 initialFlag, int32 mode);
 
 int32 mutexObjectLock(mutexObject_t *mutexObjectPtr, int32 waitFlag);
 
