@@ -3,12 +3,17 @@
 
 #include "typeDef.h"
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #define     INITIAL_CPSR_ARM_FUNCTION   0x0000005F
 #define     INITIAL_CPSR_THUMB_FUNCTION 0x0000007F
 #define     INITIAL_CPSR_ARM_DISABLED_INTERRUPTS_FUNCTION 0x000000DF
 #define     INITIAL_CPSR_THUMB_DISABLED_INTERRUPTS_FUNCTION 0x000000FF
 
-extern int64 time;  //This gloable variable is incremented after every timer tick. At the starting of the system this variable is initialized to 0.
+//extern int64 time;  //This gloable variable is incremented after every timer tick. At the starting of the system this variable is initialized to 0.
 
 //Work around to make sure that threadObject_t have *listObject_t inside it, 
 //and listObject_t has *threadObject_t inside it.
@@ -154,5 +159,9 @@ void timerTick(void);
 void sleep(int32 noOfTicks);
 void timerTick(void);
 void yield(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

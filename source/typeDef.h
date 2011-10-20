@@ -10,7 +10,7 @@ typedef int   int32;
 typedef unsigned int uint32;
 typedef long long int40;
 typedef long long int64;
-#define bool uint8
+//#define bool uint8
 #endif
 
 #endif //__TYPEDEF_H__
