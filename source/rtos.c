@@ -11,7 +11,7 @@ listNode_t *listNodesAvailable[MAX_LIST_NODES];
 
 listObject_t readyList;
 listObject_t timerList;
-int64        time;
+int64        srostime;
 threadObject_t *runningThreadObjectPtr;
 threadObject_t idleThread;
 int32          idleStack[5];
@@ -354,7 +354,7 @@ void rtosInit(void)
     
     listObjectInit(&timerList);
     
-    time = 0;
+    srostime = 0;
     
     runningThreadObjectPtr = 0;
     
@@ -524,7 +524,7 @@ void timerTick(void)
 {
     listObject_t *freedListNodePtr;
 
-    time++;
+    srostime++;
     //decrease the waiting time by 1.
     if(timerList.auxInfo > 0)
     {
@@ -571,7 +571,6 @@ void timerTick(void)
         runningThreadObjectPtr->timeQuantum = TIME_QUANTUM;
         quantumExpired = 1;
     }
-
     return;
 }
 
