@@ -159,6 +159,7 @@ void timerTick(void);
 void sleep(int32 noOfTicks);
 void timerTick(void);
 void yield(void);
+void irq_interrupt_handler(void);
 
 #ifdef __cplusplus
 }
