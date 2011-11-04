@@ -163,6 +163,9 @@ void timerTick(void);
 void yield(void);
 void irq_interrupt_handler(void);
 
+int isSROSRunning(void);
+
+
 #ifdef __cplusplus
 }
 #endif

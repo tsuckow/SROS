@@ -687,3 +687,8 @@ void internal_yield(threadObject_t * runningThread)
 {
     waitlistObjectInsert(&readyList, runningThread);
 }
+
+int isSROSRunning(void)
+{
+	return runningThreadObjectPtr != 0;
+}
