@@ -128,7 +128,9 @@ threadObject_t_timeQuantum_offset       EQU     84
 threadObject_t_innatePriority_offset     EQU     88
 threadObject_t_promotee_offset          EQU     92
 threadObject_t_promoterList_offset      EQU     96
-threadObject_t_size                     EQU     96+listObject_t_size
+threadObject_t_libspace_offset          EQU     96+listObject_t_size
+threadObject_t_size                     EQU     threadObject_t_libspace_offset+96
+
 
 mailboxObject_t_mailboxBuffer_offset    EQU     0
 mailboxObject_t_readIndex_offset        EQU     4

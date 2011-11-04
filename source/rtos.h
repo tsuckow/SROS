@@ -52,6 +52,8 @@ typedef struct _threadObject_
     struct _threadObject_ * promotee;
 
     listObject_t promoterList;
+	
+	uint8 libspace[96];
 }threadObject_t;
 
 

@@ -12,7 +12,7 @@ listNode_t *listNodesAvailable[MAX_LIST_NODES];
 listObject_t readyList;
 listObject_t timerList;
 int64        srostime;
-threadObject_t *runningThreadObjectPtr;
+threadObject_t *runningThreadObjectPtr=0;
 threadObject_t idleThread;
 int32          idleStack[5];
 int32 quantumExpired;
@@ -20,6 +20,25 @@ int32 quantumExpired;
 extern void rtosInitAsm(void);
 extern void interrupt_disable(void);
 extern void interrupt_restore(void);
+
+/*
+This function is required by ARM-C for C library functions.
+It returns a seperate library space for each thread, and a 
+global library space for a null runningThreadObjectPtr.
+*/
+void* __user_perthread_libspace()
+{
+	static char libspace[96]={0};//global libspace;
+
+	if (runningThreadObjectPtr)
+	{
+		return runningThreadObjectPtr->libspace;
+	}
+	else
+	{
+		return libspace;
+	}
+}
 
 /*
 Description:
