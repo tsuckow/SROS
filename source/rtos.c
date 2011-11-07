@@ -11,7 +11,7 @@ listNode_t *listNodesAvailable[MAX_LIST_NODES];
 
 listObject_t readyList;
 listObject_t timerList;
-int64        srostime;
+volatile int64 srostime;
 threadObject_t *runningThreadObjectPtr=0;
 threadObject_t idleThread;
 int32          idleStack[5];

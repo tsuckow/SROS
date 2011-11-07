@@ -13,7 +13,7 @@ extern "C"
 #define     INITIAL_CPSR_ARM_DISABLED_INTERRUPTS_FUNCTION 0x000000DF
 #define     INITIAL_CPSR_THUMB_DISABLED_INTERRUPTS_FUNCTION 0x000000FF
 
-//extern int64 time;  //This gloable variable is incremented after every timer tick. At the starting of the system this variable is initialized to 0.
+extern volatile int64 srostime;  //This gloable variable is incremented after every timer tick. At the starting of the system this variable is initialized to 0.
 
 //Work around to make sure that threadObject_t have *listObject_t inside it, 
 //and listObject_t has *threadObject_t inside it.
